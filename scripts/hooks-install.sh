@@ -8,6 +8,11 @@ PRE_COMMIT_VENV_DIR="${ROOT_DIR}/.tools/pre-commit-venv"
 
 cd "${ROOT_DIR}"
 
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Not a git repository. Skipping pre-commit hooks installation."
+    exit 0
+fi
+
 export PATH="${HOME}/.local/bin:${PATH}"
 
 ensure_kit_files() {
@@ -104,6 +109,11 @@ ensure_phpcs
 ensure_kit_files
 
 pre-commit install
+
+if [[ "${HOOKS_INSTALL_SKIP_STAGED_RUN:-0}" == "1" ]]; then
+    echo "Hooks installed; skipping immediate staged-file run."
+    exit 0
+fi
 
 staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
 

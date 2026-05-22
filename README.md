@@ -1,127 +1,114 @@
-# Docker Sample For Client Projects
+# **Онбординг и развёртывание первого проекта**
 
-## Что входит в sample
-
-Этот sample нужен для быстрого локального разворачивания клиентского магазина в новой папке проекта вида `~/projects/[project-name]`.
-
-## Требования
+## **Требования**
 
 Перед началом работы должны быть установлены:
-- `docker`
-- `docker compose`
-- `make`
-- `sudo`
 
-Также текущий пользователь должен иметь возможность запускать:
-- `sudo docker compose ...`
-- `sudo service apache2 stop`
-- `sudo service apache2 start`
+* `docker`
+* `docker compose`
+* `git`
+* `make`
+* `sudo`
+* `node`/`npm` с доступным `npx` для Playwright skill
 
-## Создание нового проекта
+## **1. Установить onboarding-пакет на машину**
 
-Новый проект нужно получать клонированием репозитория сразу в целевую папку проекта.
+Один раз клонируем `onboarding-scripts` в общий каталог проектов и запускаем bootstrap.
 
 ```bash
-git clone <repo-url> ~/projects/client-project
-cd ~/projects/client-project
+mkdir -p ~/projects
+git clone git@github.com:exikkane/onboarding-scripts.git ~/projects/onboarding-scripts
+cd ~/projects/onboarding-scripts
+make bootstrap
 ```
 
-После клонирования в проекте уже должны быть:
-- файлы магазина
-- SQL-дамп в `var/restore/*.sql`
-- pre-commit kit для проекта
+После этого на машине появятся:
 
-Итоговая структура должна быть такой:
+- `~/projects/AGENTS.md` и `~/projects/docs` как инструкции для всех проектов. Они будут прилинкованы в каждый проект при подключении onboarding.
+
+- `~/projects/codex` как источник Codex skills
+
+## **2. Склонировать клиентский проект** (ссылку на репо получить у Антона)
+
+Проект клонируется сразу в `~/projects/<project-name>`.
+
+```bash
+git clone <client-project-repo-url> ~/projects/<project-name>
+cd ~/projects/<project-name>
+```
+
+В проекте должен быть SQL-дамп (если дампа нет - попросить у Антона или Даниила):
 
 ```text
-~/projects/client-project/
-├── docker/
-├── scripts/
-├── var/
-│   └── restore/
-│       └── backup_*.sql
-├── mariadb/
-├── tools/
-├── docker-compose.yml
-├── Makefile
-├── .pre-commit-config.yaml
-├── phpcs.xml.dist
-└── local_conf.php
+var/restore/*.sql
 ```
 
-## Первая инициализация проекта
+## **3. Развёртывание проекта**
 
-Первая инициализация запускается одной командой:
+Перед импортом базы и запуском контейнеров подключаем onboarding-пакет.
+
+Для первого подключения проекта запускаем installer из `onboarding-scripts`:
 
 ```bash
-make init domain=client-domain.ru
+ONBOARDING_SOURCE_ROOT=~/projects/onboarding-scripts \
+  bash ~/projects/onboarding-scripts/scripts/onboarding-install.sh --shared --project "$PWD" --skills
 ```
 
-Команда делает следующее:
-- создаёт симлинк `AGENTS.md` из `~/projects/AGENTS.md`, если файл существует
-- создаёт симлинк `docs` из `~/projects/docs`, если папка существует
-- ищет SQL-дамп в `var/restore/*.sql`
-- подставляет домен в `local_conf.php`
-- подставляет домен в Apache vhost-конфиги
-- сохраняет домен проекта в `.client-domain`
-- очищает локальную папку `mariadb/`
-- запускает `make up`
-- ждёт готовности MariaDB
-- пересоздаёт базу `cscart`
-- импортирует найденный SQL
-
-## Повседневная работа
-
-Поднять уже инициализированный проект:
+Если проект уже подключён к onboarding и в нём доступна команда `make onboarding`, дальнейшие обновления onboarding-пакета можно выполнять короче:
 
 ```bash
-make up
+make onboarding
 ```
 
-Остановить проект:
+Этот шаг добавляет или обновляет ссылки на:
+
+* `AGENTS.md`
+* `docs`
+* `.gitignore.env`
+* `.pre-commit-config.yaml`
+* `Makefile`
+* `phpcs.xml.dist`
+* `scripts/client-init.sh`
+* `scripts/client-up.sh`
+* `scripts/client-down.sh`
+* `scripts/dev-bootstrap.sh`
+* `scripts/hooks-install.sh`
+* `scripts/onboarding-install.sh`
+* `scripts/pwcli.sh`
+* `tools/pre-commit`
+
+После подключения onboarding запускаем первичную инициализацию.
 
 ```bash
-make down
+make init domain=<client-domain>
 ```
 
-## Установка git hooks
-
-В sample уже встроен CS-Cart pre-commit kit. После первого клонирования проекта нужно один раз установить hooks:
+Для быстрого старта без тяжёлых данных можно использовать light-режим (на случай если у клиентов огромная база):
 
 ```bash
-make hooks-install
+make init domain=<client-domain> mode=light
 ```
 
-Команда:
-- проверяет наличие `pre-commit` и `phpcs`
-- если их нет, пытается установить автоматически
-- выполняет `pre-commit install`
-- если есть staged-файлы, запускает `pre-commit` только по ним
-- если staged-файлов нет, только устанавливает hooks без полного прогона по проекту
+> `make init` доступен только после подключения onboarding `Makefile`/scripts. Поэтому для старого проекта сначала один раз выполняется installer из `onboarding-scripts`, потом уже `make init`.
 
-Для автоустановки используются:
-- `pipx`, `apt-get` или локальный `python3 -m venv` для `pre-commit`
-- `apt-get` или `composer` для `phpcs`
-
-Если в системе уже есть `vendor/bin/phpcs`, он тоже будет использован.
-
-## Что делают команды
+## **Что делают команды**
 
 `make init`
-- используется только для первичного разворачивания проекта
-- требует `domain=...`
-- автоматически запускает `make up`
+
+* используется только для первичного разворачивания проекта
+* требует `domain=...`
+* автоматически запускает `make up`
 
 `make up`
-- читает домен из `.client-domain`
-- добавляет запись в `/etc/hosts`
-- поднимает контейнеры
+
+* читает домен из `.client-domain`
+* добавляет запись в `/etc/hosts`
+* поднимает контейнеры
 
 `make down`
-- удаляет запись проекта из `/etc/hosts`
-- останавливает контейнеры
 
-## Работа с /etc/hosts
+* удаляет запись проекта из `/etc/hosts`
+* останавливает контейнеры
 
 При `make up` в `/etc/hosts` автоматически добавляется блок вида:
 
@@ -131,31 +118,28 @@ make hooks-install
 # <<< client-project:/home/exikane/projects/client-project <<<
 ```
 
+Это позволяет работать на локали используя доменное имя клиента. В случаях когда клиент использует стороннюю тему или модули с менеджером лицензий - это позволяет работать на копии магазина клиента без постоянной проблемы с валидациями лицензий.
+
 При `make down` этот блок автоматически удаляется.
 
-## Важные правила
 
-- `make init` и `make up` запускаются без `sudo`
-- внутри скриптов `sudo` вызывается только там, где это нужно
-- если запускать `sudo make init`, файлы проекта могут стать owned by `root`
-- `make init` всегда очищает локальную папку `mariadb/` перед запуском контейнеров
-- `make init` рассчитан на первичное развёртывание или полную переинициализацию проекта
 
-## Если нужно развернуть проект заново
+## **Быстрый гайд**
 
-Если проект нужно полностью инициализировать заново в той же папке, достаточно снова выполнить:
+Короткий сценарий:
 
 ```bash
-make init domain=client-domain.ru
-```
+mkdir -p ~/projects
+git clone git@github.com:exikkane/onboarding-scripts.git ~/projects/onboarding-scripts
+cd ~/projects/onboarding-scripts
+make bootstrap
 
-## Типовой сценарий разработчика
+git clone <client-project-repo-url> ~/projects/<project-name>
+cd ~/projects/<project-name>
 
-```bash
-git clone <repo-url> ~/projects/client-project
-cd ~/projects/client-project
-make init domain=client-domain.ru
-make hooks-install
-make down
-make up
+# Шаг 1 развёртывания проекта: подключить onboarding-пакет.
+ONBOARDING_SOURCE_ROOT=~/projects/onboarding-scripts \
+  bash ~/projects/onboarding-scripts/scripts/onboarding-install.sh --shared --project "$PWD" --skills
+
+make init domain=<client-domain>
 ```

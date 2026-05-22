@@ -1,0 +1,4 @@
+interface:
+  display_name: "CS-Cart Hooks Finder"
+  short_description: "Подбор PHP/TPL хуков для модулей"
+  default_prompt: "Найди релевантные hooks для новой функциональности модуля и предложи точки внедрения."

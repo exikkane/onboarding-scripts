@@ -1,7 +1,16 @@
-.PHONY: init up down build serve migrate clearcache hooks-install
+.PHONY: bootstrap onboarding init init-light up down build serve migrate clearcache hooks-install
+
+bootstrap:
+	bash scripts/dev-bootstrap.sh
+
+onboarding:
+	bash scripts/onboarding-install.sh --shared --project "$(CURDIR)" --skills
 
 init:
-	bash scripts/client-init.sh "$(domain)"
+	CLIENT_INIT_MODE="$(mode)" bash scripts/client-init.sh "$(domain)"
+
+init-light:
+	CLIENT_INIT_MODE=light bash scripts/client-init.sh "$(domain)"
 
 up:
 	bash scripts/client-up.sh
